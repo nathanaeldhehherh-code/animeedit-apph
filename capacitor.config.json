@@ -1,0 +1,14 @@
+{
+  "appId": "com.seunome.animeedit",
+  "appName": "AnimeEdit Studio",
+  "webDir": "www",
+  "backgroundColor": "#0a0612",
+  "android": {
+    "backgroundColor": "#0a0612"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "backgroundColor": "#0a0612"
+    }
+  }
+}

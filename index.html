@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0612">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AnimeEdit Studio</title>
+<style>
+  :root {
+    --bg: #0a0612;
+    --card: #15101f;
+    --card2: #1d1530;
+    --purple: #8b5cf6;
+    --purple2: #c084fc;
+    --purple-dark: #4c1d95;
+    --text: #f5f3ff;
+    --muted: #9b8fb8;
+    --ease: cubic-bezier(.22,.61,.36,1);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at top, #1a0f2e 0%, var(--bg) 60%);
+    color: var(--text);
+    overflow: hidden;
+  }
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: calc(var(--safe-top) + 14px) 18px 12px;
+    background: rgba(10,6,18,.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #2a1f42;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 {
+    font-size: 1.2rem;
+    background: linear-gradient(90deg, var(--purple2), var(--purple));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    font-weight: 800; letter-spacing: .5px;
+  }
+  .badge { font-size: .75rem; color: var(--muted); }
+
+  main {
+    position: absolute;
+    top: calc(var(--safe-top) + 62px);
+    bottom: calc(var(--safe-bottom) + 72px);
+    left: 0; right: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .page {
+    position: absolute; inset: 0;
+    padding: 18px 16px 30px;
+    overflow-y: auto;
+    opacity: 0;
+    transform: translateY(18px) scale(.98);
+    pointer-events: none;
+    transition: opacity .45s var(--ease), transform .45s var(--ease), filter .45s var(--ease);
+    filter: blur(4px);
+  }
+  .page.active {
+    opacity: 1; transform: none; pointer-events: auto; filter: blur(0);
+  }
+  .page.leaving { opacity: 0; transform: translateX(-24px); filter: blur(3px); }
+
+  h2 { font-size: 1.35rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
+
+  .hero {
+    padding: 22px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--purple-dark), #2e1065 60%, #0a0612);
+    border: 1px solid #3b2a66;
+    box-shadow: 0 10px 40px rgba(139,92,246,.25);
+    margin-bottom: 18px;
+  }
+  .hero h2 { font-size: 1.5rem; }
+  .hero p { color: #d8ccf5; font-size: .92rem; margin-top: 6px; line-height: 1.45; }
+
+  .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile {
+    background: var(--card);
+    border: 1px solid #2a1f42;
+    border-radius: 18px;
+    padding: 18px 14px;
+    text-align: left;
+    color: var(--text);
+    cursor: pointer;
+    transition: transform .25s var(--ease), border-color .25s, background .25s;
+  }
+  .tile:active { transform: scale(.96); }
+  .tile:hover { border-color: var(--purple); background: var(--card2); }
+  .tile .ico { font-size: 1.7rem; margin-bottom: 8px; }
+  .tile b { display: block; font-size: 1rem; }
+  .tile span { color: var(--muted); font-size: .78rem; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: linear-gradient(90deg, var(--purple), #7c3aed);
+    color: #fff; border: none; border-radius: 14px;
+    padding: 12px 18px; font-weight: 700; font-size: .95rem;
+    cursor: pointer; transition: transform .2s var(--ease), box-shadow .2s;
+    box-shadow: 0 6px 20px rgba(139,92,246,.35);
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.ghost {
+    background: transparent; border: 1px solid var(--purple); box-shadow: none; color: var(--purple2);
+  }
+  .btn.small { padding: 8px 12px; font-size: .8rem; border-radius: 10px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+
+  input[type=file] { display: none; }
+
+  .clips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .clip {
+    background: var(--card); border: 1px solid #2a1f42; border-radius: 14px; overflow: hidden;
+    animation: pop .4s var(--ease);
+  }
+  .clip video { width: 100%; aspect-ratio: 9/16; object-fit: cover; background: #000; display: block; }
+  .clip .meta { padding: 8px 10px; font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empty {
+    text-align: center; color: var(--muted); padding: 40px 16px;
+    border: 1px dashed #3b2a66; border-radius: 18px; margin-top: 10px;
+  }
+  .empty .ico { font-size: 2.2rem; margin-bottom: 8px; }
+
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; padding: 7px 14px; border-radius: 999px;
+    background: var(--card); border: 1px solid #2a1f42; color: var(--muted);
+    font-size: .82rem; cursor: pointer; transition: all .25s var(--ease);
+  }
+  .chip.on { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+  .idea {
+    background: var(--card); border: 1px solid #2a1f42; border-radius: 16px;
+    padding: 14px 16px; margin-bottom: 10px;
+    animation: pop .45s var(--ease);
+  }
+  .idea .cat { font-size: .7rem; color: var(--purple2); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+  .idea h3 { font-size: 1rem; margin: 4px 0; }
+  .idea p { color: #cfc5e8; font-size: .88rem; line-height: 1.45; }
+
+  .spin {
+    background: linear-gradient(135deg, #1e1137, #120b22);
+    border: 1px solid var(--purple); border-radius: 18px; padding: 18px; margin-bottom: 16px;
+    box-shadow: 0 0 30px rgba(139,92,246,.2);
+  }
+  .spin .label { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; }
+  .spin .val { font-size: 1.05rem; font-weight: 700; margin-top: 4px; transition: opacity .3s, transform .3s var(--ease); }
+  .spin .val.flip { opacity: 0; transform: translateY(6px); }
+
+  .track {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid #2a1f42; border-radius: 14px;
+    padding: 12px; margin-bottom: 8px; cursor: pointer;
+    transition: border-color .25s, background .25s, transform .2s var(--ease);
+  }
+  .track:active { transform: scale(.98); }
+  .track.playing { border-color: var(--purple); background: var(--card2); }
+  .track .num {
+    width: 36px; height: 36px; border-radius: 10px; flex: 0 0 36px;
+    background: linear-gradient(135deg, var(--purple), var(--purple-dark));
+    display: grid; place-items: center; font-weight: 800; font-size: .85rem;
+  }
+  .track .info { flex: 1; min-width: 0; }
+  .track .info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .92rem; }
+  .track .info span { font-size: .75rem; color: var(--muted); }
+  .eq { display: none; gap: 2px; align-items: flex-end; height: 16px; }
+  .track.playing .eq { display: flex; }
+  .eq i { width: 3px; background: var(--purple2); border-radius: 2px; animation: eq 1s infinite ease-in-out; }
+  .eq i:nth-child(2) { animation-delay: .2s; }
+  .eq i:nth-child(3) { animation-delay: .4s; }
+  @keyframes eq { 0%,100% { height: 4px; } 50% { height: 16px; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+
+  .player {
+    position: sticky; bottom: 0;
+    background: rgba(21,16,31,.97); border: 1px solid #3b2a66; border-radius: 18px;
+    padding: 12px 14px; margin-top: 12px;
+  }
+  .player .now { font-size: .9rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player .controls { display: flex; justify-content: center; gap: 18px; margin-top: 8px; }
+  .player button {
+    background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer;
+    transition: transform .2s var(--ease);
+  }
+  .player button:active { transform: scale(.85); }
+  .player .play {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), #7c3aed); color: #fff !important;
+    box-shadow: 0 4px 16px rgba(139,92,246,.5);
+  }
+  .bar { height: 4px; background: #2a1f42; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+  .bar div { height: 100%; width: 0; background: linear-gradient(90deg, var(--purple2), var(--purple)); transition: width .25s linear; }
+
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding: 8px 10px calc(var(--safe-bottom) + 8px);
+    background: rgba(10,6,18,.92);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid #2a1f42;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+    z-index: 10;
+  }
+  nav button {
+    background: none; border: none; color: var(--muted);
+    font-size: .66rem; padding: 6px 0; border-radius: 12px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    transition: color .25s, background .25s, transform .2s var(--ease);
+  }
+  nav button .i { font-size: 1.3rem; transition: transform .3s var(--ease); }
+  nav button.on { color: var(--purple2); background: rgba(139,92,246,.14); }
+  nav button.on .i { transform: translateY(-2px) scale(1.1); }
+  nav button:active { transform: scale(.92); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 96px);
+    transform: translate(-50%, 20px); opacity: 0;
+    background: var(--purple); color: #fff; padding: 10px 16px; border-radius: 12px;
+    font-size: .85rem; transition: all .35s var(--ease); pointer-events: none; z-index: 30;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .label-s { font-size: .8rem; color: var(--purple2); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .note {
+    font-size: .75rem; color: var(--muted); margin-top: 14px; line-height: 1.4;
+    border-left: 2px solid var(--purple); padding-left: 10px;
+  }
+
+  .search-links { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .search-links a {
+    flex: 1 1 auto; text-align: center; text-decoration: none;
+    padding: 8px 10px; border-radius: 10px; font-size: .78rem; font-weight: 700;
+    color: #fff; background: var(--card2); border: 1px solid var(--purple);
+    transition: transform .2s var(--ease), background .2s;
+  }
+  .search-links a:active { transform: scale(.95); }
+  .search-links a.yt { border-color: #ef4444; }
+  .search-links a.sp { border-color: #22c55e; }
+
+  .yt-key { display:flex; gap:8px; margin-bottom:14px; }
+  .yt-key input, .yt-search input {
+    flex:1; min-width:0; background:var(--card); border:1px solid #2a1f42; color:var(--text);
+    border-radius:12px; padding:10px 12px; font-size:.9rem; outline:none;
+  }
+  .yt-key input:focus, .yt-search input:focus { border-color: var(--purple); }
+  .yt-search { display:flex; gap:8px; margin-bottom:14px; }
+  .yt-player {
+    position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden;
+    background:#000; border:1px solid #3b2a66; margin-bottom:12px; display:none;
+    box-shadow: 0 10px 30px rgba(139,92,246,.25);
+  }
+  .yt-player iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .yt-card {
+    display:flex; gap:10px; background:var(--card); border:1px solid #2a1f42; border-radius:14px;
+    padding:8px; margin-bottom:8px; cursor:pointer; animation: pop .4s var(--ease);
+    transition: border-color .25s, transform .2s var(--ease);
+  }
+  .yt-card:active { transform: scale(.98); }
+  .yt-card.on { border-color: var(--purple); }
+  .yt-card img { width:124px; height:70px; border-radius:10px; object-fit:cover; flex:0 0 124px; background:#000; }
+  .yt-card .t { font-size:.85rem; font-weight:700; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .yt-card .c { font-size:.72rem; color:var(--muted); margin-top:4px; }
+  .yt-card .fav { margin-left:auto; background:none; border:none; color:var(--purple2); font-size:1.2rem; cursor:pointer; align-self:center; padding:4px; }
+  .yt-status { color:var(--muted); font-size:.85rem; text-align:center; padding:16px 0; }
+  .yt-section-title { font-size:.8rem; color:var(--purple2); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin:18px 0 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AnimeEdit Studio</h1>
+  <span class="badge">v1.0</span>
+</header>
+
+<main>
+
+  <!-- INÍCIO -->
+  <section class="page active" id="home">
+    <div class="hero">
+      <h2>Crie edits incríveis 🌙</h2>
+      <p>Organize seus clipes, descubra ideias de edição e monte o som perfeito para cada cena.</p>
+    </div>
+    <div class="grid-menu">
+      <button class="tile" onclick="go('clips')"><div class="ico">🎬</div><b>Clipes</b><span>Seus cortes e cenas</span></button>
+      <button class="tile" onclick="go('ideas')"><div class="ico">💡</div><b>Ideias</b><span>Transições, cores e efeitos</span></button>
+      <button class="tile" onclick="go('music')"><div class="ico">🎵</div><b>Músicas</b><span>Sons para seus edits</span></button>
+      <button class="tile" onclick="go('yt')"><div class="ico">▶️</div><b>YouTube</b><span>Busque clipes e assista aqui</span></button>
+      <button class="tile" onclick="go('spin')"><div class="ico">🎲</div><b>Gerador</b><span>Combinação aleatória</span></button>
+    </div>
+    <p class="note">Dica: adicione seus clipes e músicas pelos botões de cada aba. Os arquivos ficam no seu aparelho.</p>
+  </section>
+
+  <!-- CLIPES -->
+  <section class="page" id="clips">
+    <h2>Meus clipes</h2>
+    <p class="sub">Escolha vídeos da galeria para montar sua biblioteca.</p>
+    <div class="row">
+      <label class="btn" for="clipInput">➕ Adicionar clipes</label>
+      <input type="file" id="clipInput" accept="video/*" multiple>
+    </div>
+    <div class="clips" id="clipGrid"></div>
+    <div class="empty" id="clipEmpty">
+      <div class="ico">🎞️</div>
+      Nenhum clipe ainda.<br>Toque em “Adicionar clipes”.
+    </div>
+  </section>
+
+  <!-- IDEIAS -->
+  <section class="page" id="ideas">
+    <h2>Ideias de edit</h2>
+    <p class="sub">Inspirações para deixar seu edit com cara de profissional.</p>
+    <div class="chips" id="chips"></div>
+    <div id="ideaList"></div>
+  </section>
+
+  <!-- MÚSICAS -->
+  <section class="page" id="music">
+    <h2>Músicas para edit</h2>
+    <p class="sub">Adicione suas músicas e use no ritmo das cenas.</p>
+    <div class="row">
+      <label class="btn" for="musicInput">➕ Adicionar músicas</label>
+      <input type="file" id="musicInput" accept="audio/*" multiple>
+    </div>
+    <div class="search-panel">
+      <div class="label-s">Buscar músicas para edit</div>
+      <div class="row" style="margin-top:8px">
+        <input id="searchQ" placeholder="ex: phonk edit, synthwave" style="flex:1;min-width:0;background:var(--card);border:1px solid #2a1f42;color:var(--text);border-radius:12px;padding:10px 12px;font-size:.9rem">
+      </div>
+      <div class="search-links">
+        <a class="yt" id="ytLink" target="_blank" rel="noopener">▶ YouTube</a>
+        <a class="sp" id="spLink" target="_blank" rel="noopener">● Spotify</a>
+        <a id="ttLink" target="_blank" rel="noopener">♪ TikTok</a>
+      </div>
+    </div>
+    <div id="trackList"></div>
+    <div class="empty" id="musicEmpty">
+      <div class="ico">🎧</div>
+      Nenhuma música ainda.<br>Use arquivos MP3 que você tem direito de usar.
+    </div>
+    <div class="player" id="player" style="display:none">
+      <div class="now" id="nowTitle">—</div>
+      <div class="bar"><div id="progress"></div></div>
+      <div class="controls">
+        <button onclick="prevTrack()">⏮</button>
+        <button class="play" id="playBtn" onclick="togglePlay()">▶</button>
+        <button onclick="nextTrack()">⏭</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- YOUTUBE -->
+  <section class="page" id="yt">
+    <h2>Clipes do YouTube</h2>
+    <p class="sub">Busque e assista dentro do app. Nada é baixado.</p>
+
+    <div class="yt-key" id="ytKeyBox">
+      <input id="ytKeyInput" type="password" placeholder="Cole sua YouTube Data API key">
+      <button class="btn small" onclick="saveKey()">Salvar</button>
+    </div>
+
+    <div class="yt-search">
+      <input id="ytQuery" placeholder="ex: jujutsu kaisen edit" onkeydown="if(event.key==='Enter')ytSearch()">
+      <button class="btn small" onclick="ytSearch()">Buscar</button>
+    </div>
+
+    <div class="yt-player" id="ytPlayer"><iframe id="ytFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+
+    <div id="ytResults"><div class="yt-status">Digite algo para buscar clipes.</div></div>
+
+    <div class="yt-section-title">⭐ Favoritos</div>
+    <div id="ytFavs"><div class="yt-status">Nenhum favorito ainda.</div></div>
+  </section>
+
+  <!-- GERADOR -->
+  <section class="page" id="spin">
+    <h2>Gerador de edit</h2>
+    <p class="sub">Toque e receba uma combinação criativa para o seu próximo edit.</p>
+    <div class="spin">
+      <div class="label">Efeito</div><div class="val" id="sEffect">—</div>
+      <div class="label" style="margin-top:12px">Transição</div><div class="val" id="sTrans">—</div>
+      <div class="label" style="margin-top:12px">Cor</div><div class="val" id="sColor">—</div>
+      <div class="label" style="margin-top:12px">Vibe musical</div><div class="val" id="sMusic">—</div>
+    </div>
+    <div class="search-links" id="vibeLinks" style="margin:-4px 0 14px"></div>
+    <button class="btn" style="width:100%" onclick="spin()">🎲 Gerar combinação</button>
+  </section>
+
+</main>
+
+<nav>
+  <button class="on" data-page="home" onclick="go('home')"><span class="i">🏠</span>Início</button>
+  <button data-page="clips" onclick="go('clips')"><span class="i">🎬</span>Clipes</button>
+  <button data-page="ideas" onclick="go('ideas')"><span class="i">💡</span>Ideias</button>
+  <button data-page="music" onclick="go('music')"><span class="i">🎵</span>Músicas</button>
+  <button data-page="yt" onclick="go('yt')"><span class="i">▶️</span>YouTube</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Navegação com transição suave ---------- */
+let current = 'home';
+function go(id) {
+  if (id === current) return;
+  const old = document.getElementById(current);
+  const next = document.getElementById(id);
+  old.classList.remove('active');
+  old.classList.add('leaving');
+  setTimeout(() => old.classList.remove('leaving'), 450);
+  next.classList.add('active');
+  current = id;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.page === id));
+  document.querySelector('main').scrollTop = 0;
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ---------- Clipes ---------- */
+const clips = [];
+document.getElementById('clipInput').addEventListener('change', e => {
+  [...e.target.files].forEach(f => {
+    clips.push({ name: f.name, url: URL.createObjectURL(f) });
+  });
+  e.target.value = '';
+  renderClips();
+  toast(`${clips.length} clipe(s) na biblioteca`);
+});
+
+function renderClips() {
+  const grid = document.getElementById('clipGrid');
+  grid.innerHTML = '';
+  clips.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'clip';
+    div.innerHTML = `<video src="${c.url}" controls playsinline preload="metadata"></video>
+                     <div class="meta">${escapeHtml(c.name)}</div>`;
+    grid.appendChild(div);
+  });
+  document.getElementById('clipEmpty').style.display = clips.length ? 'none' : 'block';
+}
+
+/* ---------- Ideias ---------- */
+const ideas = [
+  { cat: 'Transição', title: 'Match cut', desc: 'Corte entre dois movimentos parecidos de personagens diferentes. Ótimo para conectar cenas distantes.' },
+  { cat: 'Transição', title: 'Zoom em rotação', desc: 'Zoom rápido com leve rotação ao trocar de cena, sincronizado com a batida.' },
+  { cat: 'Transição', title: 'Whip pan suave', desc: 'Movimento horizontal rápido com desfoque de movimento entre os clipes.' },
+  { cat: 'Transição', title: 'Flash branco', desc: 'Um frame branco curto antes de cada corte forte no drop da música.' },
+  { cat: 'Cor', title: 'Gradação roxa', desc: 'Puxe sombras para roxo e destaques para rosa. Combina com a identidade do app.' },
+  { cat: 'Cor', title: 'Preto e branco com cor pontual', desc: 'Deixe tudo em P&B e apenas o olho ou a arma do personagem colorido.' },
+  { cat: 'Cor', title: 'Vignette escura', desc: 'Escureça as bordas para focar no personagem e dar clima dramático.' },
+  { cat: 'Efeito', title: 'Glitch no drop', desc: 'Pequenos cortes de RGB shift e distorção exatamente na virada da música.' },
+  { cat: 'Efeito', title: 'Partículas de brilho', desc: 'Adicione faíscas ou pétalas em overlay para cenas emocionais.' },
+  { cat: 'Efeito', title: 'Slow motion no impacto', desc: 'Desacelere o golpe ou o olhar final, depois volte à velocidade normal.' },
+  { cat: 'Texto', title: 'Kinetic text', desc: 'Frases curtas que surgem em sincronia com cada batida da música.' },
+  { cat: 'Texto', title: 'Legenda de fala com fonte serifada', desc: 'Frases de efeito em fonte elegante no começo e no fim do edit.' },
+  { cat: 'Ritmo', title: 'Cortes em 4 batidas', desc: 'Troque de clipe a cada 4 batidas no refrão e a cada 8 no verso.' },
+  { cat: 'Ritmo', title: 'Build-up e drop', desc: 'Acelere os cortes na subida de tensão e pare em um frame congelado no drop.' }
+];
+const cats = ['Todas', ...new Set(ideas.map(i => i.cat))];
+let activeCat = 'Todas';
+
+function renderChips() {
+  const box = document.getElementById('chips');
+  box.innerHTML = '';
+  cats.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (c === activeCat ? ' on' : '');
+    b.textContent = c;
+    b.onclick = () => { activeCat = c; renderChips(); renderIdeas(); };
+    box.appendChild(b);
+  });
+}
+function renderIdeas() {
+  const list = document.getElementById('ideaList');
+  const filtered = activeCat === 'Todas' ? ideas : ideas.filter(i => i.cat === activeCat);
+  list.innerHTML = filtered.map((i, n) => `
+    <div class="idea" style="animation-delay:${n * 40}ms">
+      <div class="cat">${i.cat}</div>
+      <h3>${i.title}</h3>
+      <p>${i.desc}</p>
+    </div>`).join('');
+}
+renderChips();
+renderIdeas();
+
+/* ---------- Músicas ---------- */
+const tracks = [];
+let trackIdx = -1;
+const audio = new Audio();
+audio.addEventListener('timeupdate', () => {
+  if (audio.duration) document.getElementById('progress').style.width = (audio.currentTime / audio.duration * 100) + '%';
+});
+audio.addEventListener('ended', () => nextTrack());
+
+document.getElementById('musicInput').addEventListener('change', e => {
+  [...e.target.files].forEach(f => {
+    tracks.push({ name: f.name.replace(/\.[^.]+$/, ''), url: URL.createObjectURL(f) });
+  });
+  e.target.value = '';
+  renderTracks();
+  toast(`${tracks.length} música(s) na lista`);
+});
+
+function renderTracks() {
+  const box = document.getElementById('trackList');
+  box.innerHTML = tracks.map((t, i) => `
+    <div class="track ${i === trackIdx ? 'playing' : ''}" onclick="playTrack(${i})">
+      <div class="num">${i + 1}</div>
+      <div class="info"><b>${escapeHtml(t.name)}</b><span>Edit · toque para tocar</span></div>
+      <div class="eq"><i></i><i></i><i></i></div>
+    </div>`).join('');
+  document.getElementById('musicEmpty').style.display = tracks.length ? 'none' : 'block';
+  document.getElementById('player').style.display = tracks.length ? 'block' : 'none';
+}
+
+function playTrack(i) {
+  trackIdx = i;
+  audio.src = tracks[i].url;
+  audio.play();
+  document.getElementById('nowTitle').textContent = tracks[i].name;
+  document.getElementById('playBtn').textContent = '⏸';
+  renderTracks();
+}
+function togglePlay() {
+  if (trackIdx < 0 && tracks.length) return playTrack(0);
+  if (audio.paused) { audio.play(); document.getElementById('playBtn').textContent = '⏸'; }
+  else { audio.pause(); document.getElementById('playBtn').textContent = '▶'; }
+}
+function nextTrack() { if (tracks.length) playTrack((trackIdx + 1) % tracks.length); }
+function prevTrack() { if (tracks.length) playTrack((trackIdx - 1 + tracks.length) % tracks.length); }
+
+/* ---------- Gerador ---------- */
+const pools = {
+  effect: ['Glitch RGB', 'Slow motion', 'Partículas', 'Shake no impacto', 'Blur de movimento', 'Zoom pulsante'],
+  trans: ['Match cut', 'Whip pan', 'Flash branco', 'Zoom em rotação', 'Fade roxo', 'Corte seco no drop'],
+  color: ['Roxo e preto', 'Rosa neon', 'P&B com cor pontual', 'Azul noturno', 'Sépia dramático'],
+  music: ['Phonk', 'Synthwave', 'Orquestral épico', 'Lo-fi triste', 'Drift phonk', 'Trap sombrio']
+};
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function spin() {
+  const map = { sEffect: pick(pools.effect), sTrans: pick(pools.trans), sColor: pick(pools.color), sMusic: pick(pools.music) };
+  renderVibeLinks(map.sMusic);
+  Object.entries(map).forEach(([id, val], n) => {
+    const el = document.getElementById(id);
+    el.classList.add('flip');
+    setTimeout(() => { el.textContent = val; el.classList.remove('flip'); }, 180 + n * 80);
+  });
+}
+spin();
+
+
+/* ---------- Busca de músicas (abre no navegador, sem baixar nada) ---------- */
+function buildSearch(q) {
+  const term = encodeURIComponent(q.trim() || 'anime edit music');
+  return {
+    yt: 'https://www.youtube.com/results?search_query=' + term,
+    sp: 'https://open.spotify.com/search/' + term,
+    tt: 'https://www.tiktok.com/search?q=' + term
+  };
+}
+function updateSearchLinks() {
+  const l = buildSearch(document.getElementById('searchQ').value);
+  document.getElementById('ytLink').href = l.yt;
+  document.getElementById('spLink').href = l.sp;
+  document.getElementById('ttLink').href = l.tt;
+}
+document.getElementById('searchQ').addEventListener('input', updateSearchLinks);
+updateSearchLinks();
+
+function renderVibeLinks(vibe) {
+  const l = buildSearch(vibe + ' edit');
+  document.getElementById('vibeLinks').innerHTML =
+    `<a class="yt" href="${l.yt}" target="_blank" rel="noopener">▶ YouTube</a>
+     <a class="sp" href="${l.sp}" target="_blank" rel="noopener">● Spotify</a>
+     <a href="${l.tt}" target="_blank" rel="noopener">♪ TikTok</a>`;
+}
+
+
+/* ---------- YouTube: busca oficial (Data API v3) + player embutido ---------- */
+let ytKey = '';
+let ytFavs = [];          // guarda só id, título, canal e miniatura
+let ytCurrent = null;
+
+function saveKey() {
+  const v = document.getElementById('ytKeyInput').value.trim();
+  if (!v) return toast('Cole a chave primeiro');
+  ytKey = v;
+  document.getElementById('ytKeyInput').value = '';
+  document.getElementById('ytKeyInput').placeholder = 'Chave salva ✓';
+  toast('Chave salva nesta sessão');
+  if (document.getElementById('ytQuery').value.trim()) ytSearch();
+}
+
+function decodeEntities(t) {
+  const d = document.createElement('textarea');
+  d.innerHTML = t;
+  return d.value;
+}
+
+async function ytSearch() {
+  const q = document.getElementById('ytQuery').value.trim();
+  const box = document.getElementById('ytResults');
+  if (!q) return toast('Digite um termo');
+  if (!ytKey) return toast('Cole sua API key primeiro');
+
+  box.innerHTML = '<div class="yt-status">Buscando…</div>';
+  try {
+    const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=15&safeSearch=moderate&q='
+      + encodeURIComponent(q + ' edit') + '&key=' + encodeURIComponent(ytKey);
+    const r = await fetch(url);
+    const data = await r.json();
+    if (!r.ok) {
+      const msg = (data.error && data.error.message) || 'Erro na busca';
+      box.innerHTML = `<div class="yt-status">⚠️ ${escapeHtml(msg)}</div>`;
+      return;
+    }
+    const items = (data.items || []).filter(i => i.id && i.id.videoId);
+    if (!items.length) { box.innerHTML = '<div class="yt-status">Nenhum resultado.</div>'; return; }
+    box.innerHTML = items.map(i => {
+      const sn = i.snippet;
+      const fav = ytFavs.some(f => f.id === i.id.videoId);
+      return `<div class="yt-card" data-id="${i.id.videoId}" onclick="ytPlay('${i.id.videoId}')">
+        <img src="${sn.thumbnails.medium.url}" alt="">
+        <div style="min-width:0;flex:1">
+          <div class="t">${escapeHtml(decodeEntities(sn.title))}</div>
+          <div class="c">${escapeHtml(decodeEntities(sn.channelTitle))}</div>
+        </div>
+        <button class="fav" onclick="event.stopPropagation();toggleFav('${i.id.videoId}')">${fav ? '★' : '☆'}</button>
+      </div>`;
+    }).join('');
+    // guarda os dados para favoritar depois
+    items.forEach(i => { ytCache[i.id.videoId] = { id: i.id.videoId, title: decodeEntities(i.snippet.title), channel: decodeEntities(i.snippet.channelTitle), thumb: i.snippet.thumbnails.medium.url }; });
+  } catch (e) {
+    box.innerHTML = '<div class="yt-status">⚠️ Sem conexão ou chave inválida.</div>';
+  }
+}
+const ytCache = {};
+
+function ytPlay(id) {
+  ytCurrent = id;
+  const player = document.getElementById('ytPlayer');
+  document.getElementById('ytFrame').src = `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0`;
+  player.style.display = 'block';
+  document.querySelectorAll('.yt-card').forEach(c => c.classList.toggle('on', c.dataset.id === id));
+  player.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleFav(id) {
+  const idx = ytFavs.findIndex(f => f.id === id);
+  if (idx >= 0) { ytFavs.splice(idx, 1); toast('Removido dos favoritos'); }
+  else {
+    const info = ytCache[id];
+    if (!info) return;
+    ytFavs.push(info);
+    toast('Adicionado aos favoritos ⭐');
+  }
+  renderFavs();
+  ytSearchRefreshStars();
+}
+function ytSearchRefreshStars() {
+  document.querySelectorAll('.yt-card').forEach(c => {
+    const id = c.dataset.id;
+    const btn = c.querySelector('.fav');
+    if (btn) btn.textContent = ytFavs.some(f => f.id === id) ? '★' : '☆';
+  });
+}
+function renderFavs() {
+  const box = document.getElementById('ytFavs');
+  if (!ytFavs.length) { box.innerHTML = '<div class="yt-status">Nenhum favorito ainda.</div>'; return; }
+  box.innerHTML = ytFavs.map(f => `
+    <div class="yt-card" data-id="${f.id}" onclick="ytPlay('${f.id}')">
+      <img src="${f.thumb}" alt="">
+      <div style="min-width:0;flex:1">
+        <div class="t">${escapeHtml(f.title)}</div>
+        <div class="c">${escapeHtml(f.channel)}</div>
+      </div>
+      <button class="fav" onclick="event.stopPropagation();toggleFav('${f.id}')">★</button>
+    </div>`).join('');
+}
+
+/* ---------- Utilidades ---------- */
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* Service worker só funciona quando o arquivo é servido via HTTPS (ao publicar). */
+</script>
+</body>
+</html>
